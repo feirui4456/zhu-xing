@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞书仪表盘双柱图</title>
+    <!-- 1. 引入飞书官方 JS-SDK -->
+    <script src="https://lf3-static.bytednsdoc.com/obj/eden-cn/helbneh7nu/javascript/bitable-js-sdk.mix.js"></script>
+    <!-- 2. 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body { margin: 0; padding: 10px; background-color: #fff; font-family: sans-serif; }
+        #chart { width: 100%; height: 400px; }
+    </style>
+</head>
+<body>
+
+    <div id="chart"></div>
+
+    <script>
+        // 初始化 ECharts
+        const myChart = echarts.init(document.getElementById('chart'));
+
+        // 核心函数：从飞书多维表格抓取数据并刷新图表
+        async function renderBitableChart() {
+            try {
+                // 确保 bitable 已经就绪
+                const table = await bitable.base.getActiveTable();
+                const view = await table.getActiveView();
+                const recordList = await view.getRecordList();
+
+                const months = [];
+                const deptA = [];
+                const deptB = [];
+
+                // 循环解析表格里的数据，注意：这里的键名要和多维表格的“列名”一字不差
+                for (const record of recordList) {
+                    const fields = record.fields;
+                    months.push(fields['月份'] || '未知');
+                    deptA.push(fields['销售一部'] || 0);
+                    deptB.push(fields['销售二部'] || 0);
+                }
+
+                // 动态装填配置项
+                myChart.setOption({
+                    title: { text: '业绩实时对比图', left: 'center' },
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    legend: { data: ['销售一部', '销售二部'], bottom: 0 },
+                    xAxis: { type: 'category', data: months },
+                    yAxis: { type: 'value' },
+                    series: [
+                        { name: '销售一部', type: 'bar', data: deptA, color: '#409EFF' },
+                        { name: '销售二部', type: 'bar', data: deptB, color: '#67C23A' }
+                    ]
+                });
+            } catch (err) {
+                console.error("加载多维表格数据失败：", err);
+            }
+        }
+
+        // 监听多维表格的任何选择/数据改变事件
+        bitable.base.onSelectionChange(() => {
+            renderBitableChart();
+        });
+
+        // 首次加载完成先触发一次渲染
+        renderBitableChart();
+
+        // 自适应窗口大小
+        window.addEventListener('resize', () => myChart.resize());
+    </script>
+</body>
+</html>
